@@ -22,7 +22,11 @@ async def main(
     orig_baudrate = await adc.get_baudrate()
     orig_address = await adc.get_address()
     print(f"BR: {orig_baudrate}, ADDR: {orig_address}")
-
+    VENDOR = await adc.get_vendor()
+    PRODUCT_NAME = await adc.get_product_name()
+    VERSION = await adc.get_version()
+    SERIAL_NUMBER = await adc.get_serial_number()
+    print(f"Vendor: {VENDOR}, Product: {PRODUCT_NAME}, Version: {VERSION}, S/N: {SERIAL_NUMBER}")
     parameters = await adc.read_parameters()
     print(f"Parameters: {parameters}")
     data = await adc.read_data()
@@ -43,6 +47,6 @@ if __name__ == "__main__":
     vp = vsn.create(1)
     print(vp)
     connection_config = ModbusSerialConnectionConfig(port=vp[0], baudrate=19200, timeout=1)
-    asyncio.run(main(connection_config, address=1))
+    asyncio.run(main(connection_config, address=2))
 
     vsn.stop()

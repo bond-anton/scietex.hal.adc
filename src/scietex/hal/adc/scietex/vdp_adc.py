@@ -1,14 +1,16 @@
 """Scietex VdpADC."""
 
+import struct
 from logging import Logger
 
 from scietex.hal.serial import ModbusSerialConnectionConfig
-from scietex.hal.serial.utilities.numeric import ByteOrder, combine_32bit, float_from_int
+from scietex.hal.serial.utilities.numeric import ByteOrder
 
 from ..base.data import ADCParameters, VoltageTuple
 from ..base.rs485 import RS485ADC
 
-VOLTAGE_SCALE = 100
+VOLTAGE_SCALE = 1
+BYTEORDER = ByteOrder.LITTLE_ENDIAN
 
 
 class VdpADC(RS485ADC):
@@ -40,25 +42,37 @@ class VdpADC(RS485ADC):
     async def get_vendor(self) -> str:
         response = await self.read_registers(0, 10, holding=False)
         if response is not None:
-            return bytes(response).decode()
+            # Each register is 16-bit, containing two ASCII bytes
+            bytes_list = []
+            for reg in response:
+                bytes_list.append((reg >> 8) & 0xFF)  # high byte
+                bytes_list.append(reg & 0xFF)  # low byte
+            vendor_bytes = bytes(bytes_list)
+            # Decode and strip null bytes
+            return vendor_bytes.decode("ascii", errors="ignore").rstrip("\x00")
         return ""
 
     async def get_product_name(self) -> str:
-        response = await self.read_registers(10, 10, holding=False)
+        response = await self.read_registers(10, 20, holding=False)
         if response is not None:
-            return bytes(response).decode()
+            # Each register is 16-bit, containing two ASCII bytes
+            bytes_list = []
+            for reg in response:
+                bytes_list.append((reg >> 8) & 0xFF)  # high byte
+                bytes_list.append(reg & 0xFF)  # low byte
+            product_bytes = bytes(bytes_list)
+            # Decode and strip null bytes
+            return product_bytes.decode("ascii", errors="ignore").rstrip("\x00")
         return ""
 
     async def get_version(self) -> str:
-        response = await self.read_registers(20, 3, holding=False)
+        response = await self.read_registers(30, 3, holding=False)
         if response is not None:
             return f"{response[0]:d}.{response[1]:d}.{response[2]:d}"
         return ""
 
     async def get_serial_number(self) -> str:
-        response = await self.read_two_registers_int(
-            10, holding=True, byteorder=ByteOrder.BIG_ENDIAN
-        )
+        response = await self.read_two_registers_int(10, holding=True, byteorder=BYTEORDER)
         if response is not None:
             return f"{response:d}"
         return ""
@@ -67,7 +81,7 @@ class VdpADC(RS485ADC):
         ch_idx = max(0, min(channel, self.channels_number - 1))
         start_register = 36 + ch_idx * 2
         response = await self.read_two_registers_float(
-            start_register, holding=False, factor=VOLTAGE_SCALE, byteorder=ByteOrder.BIG_ENDIAN
+            start_register, holding=False, factor=VOLTAGE_SCALE, byteorder=BYTEORDER
         )
         if response is not None:
             return float(response)
@@ -77,7 +91,8 @@ class VdpADC(RS485ADC):
         response = await self.read_registers(36, self.channels_number * 2, holding=False)
         if response is not None and len(response) == self.channels_number * 2:
             voltage = tuple(
-                float_from_int(combine_32bit(a, b, byteorder=ByteOrder.BIG_ENDIAN), VOLTAGE_SCALE)
+                struct.unpack(">f", struct.pack(">HH", a, b))[0]
+                # float_from_int(combine_32bit(a, b, byteorder=BYTEORDER), VOLTAGE_SCALE)
                 if a is not None and b is not None
                 else None
                 for a, b in zip(response[::2], response[1::2])
@@ -107,8 +122,10 @@ class VdpADC(RS485ADC):
             if response == 0:
                 return 9600
             elif response == 1:
-                return 19200
+                return 14400
             elif response == 2:
+                return 19200
+            elif response == 5:
                 return 115200
         return 0
 
@@ -116,9 +133,12 @@ class VdpADC(RS485ADC):
         if baudrate <= 9600:
             new_baudrate = 9600
             baudrate_code = 0
+        elif baudrate <= 14400:
+            new_baudrate = 14400
+            baudrate_code = 1
         elif baudrate <= 19200:
             new_baudrate = 19200
-            baudrate_code = 1
+            baudrate_code = 12
         else:
             new_baudrate = 115200
             baudrate_code = 5
