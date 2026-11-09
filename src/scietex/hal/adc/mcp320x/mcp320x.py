@@ -33,8 +33,11 @@ def encode_command(*, single_ended: bool, select: int) -> list[int]:
     channel number; in differential mode it is the 3-bit code of DS21298E
     Tables 5-1 and 5-2, `2 * pair + polarity`.
 
-    Bit 2 of the channel field is a don't-care on the MCP3204; it is always
-    driven low, which is safe for both parts.
+    The MCP320x command is the five-bit sequence start, SGL/DIFF, D2, D1, D0,
+    transmitted MSB first during the first five clocks, followed by the
+    device's null bit and the twelve data bits. Byte 0 therefore carries
+    start (bit 2), SGL/DIFF (bit 1) and D2 (bit 0); byte 1 bits 7..6 carry
+    D1 and D0.
 
     :param single_ended: True to request a single-ended input (bool).
     :param select: Channel number or differential code, 0..7 (int).
@@ -46,8 +49,10 @@ def encode_command(*, single_ended: bool, select: int) -> list[int]:
     select = check_integer(select)
     if not 0 <= select <= 7:
         raise ValueError(f"Expected a channel or pair code in 0..7, got {select}")
-    mode = 0x40 if check_bool(single_ended) else 0x00
-    return [0x80 | mode | (select << 3), 0x00, 0x00]
+    mode = 0x06 if check_bool(single_ended) else 0x04
+    first = mode | ((select & 0x04) >> 2)
+    second = (select & 0x03) << 6
+    return [first, second, 0x00]
 
 
 def decode_code(data: list[int]) -> int:

@@ -6,68 +6,76 @@ from scietex.hal.adc.errors import ADCFrameError
 from scietex.hal.adc.mcp320x.mcp320x import decode_code, encode_command
 
 SINGLE_ENDED_MCP3208 = [
-    (0, 0xC0),
-    (1, 0xC8),
-    (2, 0xD0),
-    (3, 0xD8),
-    (4, 0xE0),
-    (5, 0xE8),
-    (6, 0xF0),
-    (7, 0xF8),
+    (0, 0x06, 0x00),
+    (1, 0x06, 0x40),
+    (2, 0x06, 0x80),
+    (3, 0x06, 0xC0),
+    (4, 0x07, 0x00),
+    (5, 0x07, 0x40),
+    (6, 0x07, 0x80),
+    (7, 0x07, 0xC0),
 ]
 
 DIFFERENTIAL_MCP3208 = [
-    (0, 0x80),
-    (1, 0x88),
-    (2, 0x90),
-    (3, 0x98),
-    (4, 0xA0),
-    (5, 0xA8),
-    (6, 0xB0),
-    (7, 0xB8),
+    (0, 0x04, 0x00),
+    (1, 0x04, 0x40),
+    (2, 0x04, 0x80),
+    (3, 0x04, 0xC0),
+    (4, 0x05, 0x00),
+    (5, 0x05, 0x40),
+    (6, 0x05, 0x80),
+    (7, 0x05, 0xC0),
 ]
 
 
-@pytest.mark.parametrize(("select", "first_byte"), SINGLE_ENDED_MCP3208)
-def test_single_ended_command_bytes(select: int, first_byte: int) -> None:
-    """Every MCP3208 single-ended channel maps to its documented byte."""
+@pytest.mark.parametrize(("select", "first_byte", "second_byte"), SINGLE_ENDED_MCP3208)
+def test_single_ended_command_bytes(
+    select: int, first_byte: int, second_byte: int
+) -> None:
+    """Every MCP3208 single-ended channel maps to its documented bytes."""
     assert encode_command(single_ended=True, select=select) == [
         first_byte,
-        0x00,
+        second_byte,
         0x00,
     ]
 
 
-@pytest.mark.parametrize(("select", "first_byte"), SINGLE_ENDED_MCP3208[:4])
+@pytest.mark.parametrize(
+    ("select", "first_byte", "second_byte"), SINGLE_ENDED_MCP3208[:4]
+)
 def test_mcp3204_reuses_the_first_four_single_ended_bytes(
-    select: int, first_byte: int
+    select: int, first_byte: int, second_byte: int
 ) -> None:
     """The MCP3204 channels 0..3 send the same four single-ended bytes."""
     assert encode_command(single_ended=True, select=select) == [
         first_byte,
-        0x00,
+        second_byte,
         0x00,
     ]
 
 
-@pytest.mark.parametrize(("select", "first_byte"), DIFFERENTIAL_MCP3208)
-def test_differential_command_bytes(select: int, first_byte: int) -> None:
-    """Every MCP3208 differential code sets SGL/DIFF to 0 and its own D2..D0."""
+@pytest.mark.parametrize(("select", "first_byte", "second_byte"), DIFFERENTIAL_MCP3208)
+def test_differential_command_bytes(
+    select: int, first_byte: int, second_byte: int
+) -> None:
+    """Every MCP3208 differential code clears SGL/DIFF and sets its own D2..D0."""
     assert encode_command(single_ended=False, select=select) == [
         first_byte,
-        0x00,
+        second_byte,
         0x00,
     ]
 
 
-@pytest.mark.parametrize(("select", "first_byte"), DIFFERENTIAL_MCP3208[:4])
+@pytest.mark.parametrize(
+    ("select", "first_byte", "second_byte"), DIFFERENTIAL_MCP3208[:4]
+)
 def test_mcp3204_reuses_the_first_four_differential_bytes(
-    select: int, first_byte: int
+    select: int, first_byte: int, second_byte: int
 ) -> None:
     """The MCP3204 differential codes 0..3 send the same four bytes."""
     assert encode_command(single_ended=False, select=select) == [
         first_byte,
-        0x00,
+        second_byte,
         0x00,
     ]
 

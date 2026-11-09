@@ -38,8 +38,9 @@ def test_value_never_leaves_the_code_range() -> None:
 
 @pytest.mark.parametrize("pair", range(4))
 def test_request_selects_the_pair(pair: int) -> None:
-    """The request byte is 0x80 | (2 * pair << 3), polarity bit clear."""
+    """The request carries the 2 * pair code, polarity bit clear."""
     transport = fake(0)
     adc = MCP3208(transport=transport)
     _ = adc.differential_channel(pair).value
-    assert transport.calls == [[0x80 | (2 * pair << 3), 0x00, 0x00]]
+    code = 2 * pair
+    assert transport.calls == [[0x04 | ((code & 0x04) >> 2), (code & 0x03) << 6, 0x00]]

@@ -20,7 +20,7 @@ def test_value_issues_one_three_byte_transfer() -> None:
     adc = MCP3208(transport=transport)
     assert adc.channel(5).value == 2048
     assert len(transport.requests) == 1
-    assert transport.requests[0] == [0xE8, 0x00, 0x00]
+    assert transport.requests[0] == [0x07, 0x40, 0x00]
 
 
 def test_voltage_is_none_without_v_ref() -> None:

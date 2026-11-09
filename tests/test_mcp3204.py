@@ -43,10 +43,10 @@ def test_read_all_reads_every_channel_in_order() -> None:
     adc = MCP3204(transport=fake(10, 20, 30, 40))
     assert adc.read_all() == (10, 20, 30, 40)
     assert adc.transport.calls == [
-        [0xC0, 0x00, 0x00],
-        [0xC8, 0x00, 0x00],
-        [0xD0, 0x00, 0x00],
-        [0xD8, 0x00, 0x00],
+        [0x06, 0x00, 0x00],
+        [0x06, 0x40, 0x00],
+        [0x06, 0x80, 0x00],
+        [0x06, 0xC0, 0x00],
     ]
 
 
@@ -55,6 +55,6 @@ def test_read_differential_reads_every_pair_in_order() -> None:
     adc = MCP3204(transport=fake(100, 200))
     assert adc.read_differential() == (100, 200)
     assert adc.transport.calls == [
-        [0x80, 0x00, 0x00],
-        [0x90, 0x00, 0x00],
+        [0x04, 0x00, 0x00],
+        [0x04, 0x80, 0x00],
     ]
